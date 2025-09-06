@@ -3,29 +3,6 @@ import Accordion from './Accordian';
 import Tabs from './Tabs';
 import { useParams, useNavigate } from 'react-router-dom';
 
-// Status Modal Component - Updated to show status messages
-const StatusModal = ({ isOpen, onClose, message }) => {
-  if (!isOpen) return null;
-  
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full mx-4">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900">
-            {message}
-          </h2>
-          <button
-            onClick={onClose}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-md transition-colors duration-200"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 // Confirmation Modal Component
 const ApproveRejectModal = ({ isOpen, onClose, onConfirm, action }) => {
   if (!isOpen) return null;
@@ -72,13 +49,12 @@ const PatientDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  // Modal state for confirmation
+  // Modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [modalAction, setModalAction] = useState(null);
   
-  // Modal state for status messages
-  const [statusModalOpen, setStatusModalOpen] = useState(false);
-  const [statusMessage, setStatusMessage] = useState('');
+  // Status state - tracks if claim is approved/rejected
+  const [claimStatus, setClaimStatus] = useState(null); // null, 'approved', or 'rejected'
 
   useEffect(() => {
     const fetchPatientData = async () => {
@@ -111,20 +87,15 @@ const PatientDetail = () => {
     setModalOpen(true);
   };
 
-  const showStatusMessage = (message) => {
-    setStatusMessage(message);
-    setStatusModalOpen(true);
-  };
-
   const handleApprove = () => {
     console.log('Claim Approved for patient:', patientId);
-    showStatusMessage('Claim approved');
+    setClaimStatus('approved');
     // Add your approve logic here - API call, state update, etc.
   };
 
   const handleReject = () => {
     console.log('Claim Rejected for patient:', patientId);
-    showStatusMessage('Claim rejected');
+    setClaimStatus('rejected');
     // Add your reject logic here - API call, state update, etc.
   };
 
@@ -168,7 +139,6 @@ const PatientDetail = () => {
   const billDetails = commercial_adjudication?.final_bill_details;
   const validationResults = commercial_adjudication?.final_validation_details;
 
-  // Progress steps - all completed
   const progressSteps = [
     { title: "Document processed successfully", completed: true },
     { title: "PDF Analysis Complete", completed: true },
@@ -187,9 +157,8 @@ const PatientDetail = () => {
           ← Back to Dashboard
         </button>
 
-        {/* Header with Approve/Reject buttons */}
+        {/* Header with Approve/Reject buttons or Status */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          {/* Approve/Reject buttons at the top right */}
           <div className="flex justify-between items-start mb-4">
             <div className="flex items-center gap-1">
               <div className="w-8 h-8 bg-red-500 rounded flex items-center justify-center">
@@ -198,20 +167,35 @@ const PatientDetail = () => {
               <h1 className="text-2xl font-bold text-gray-900">{billDetails?.patient?.name}</h1>
             </div>
             
-            <div className="flex gap-3">
-              <button
-                onClick={() => openModal('approve')}
-                className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
-              >
-                Approve
-              </button>
-              <button
-                onClick={() => openModal('reject')}
-                className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
-              >
-                Reject
-              </button>
-            </div>
+            {/* Conditional Rendering: Show buttons if no status, show status if approved/rejected */}
+            {claimStatus === null && (
+              <div className="flex gap-3">
+                <button
+                  onClick={() => openModal('approve')}
+                  className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
+                >
+                  Approve
+                </button>
+                <button
+                  onClick={() => openModal('reject')}
+                  className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
+                >
+                  Reject
+                </button>
+              </div>
+            )}
+
+            {claimStatus === 'approved' && (
+              <div className="bg-green-100 text-green-700 font-bold text-lg px-4 py-2 rounded-md">
+                CLAIM APPROVED
+              </div>
+            )}
+
+            {claimStatus === 'rejected' && (
+              <div className="bg-red-100 text-red-700 font-bold text-lg px-4 py-2 rounded-md">
+                CLAIM REJECTED
+              </div>
+            )}
           </div>
           
           <p className="text-gray-600 text-sm mb-4">Medical Bill Analysis & Validation Report</p>
@@ -240,7 +224,7 @@ const PatientDetail = () => {
         {icd_analysis && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              🔍 Medical Overview
+              🔍 Diagnosis & Treatment
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-blue-50 border border-blue-200 rounded p-4">
@@ -433,13 +417,6 @@ const PatientDetail = () => {
           onClose={() => setModalOpen(false)}
           onConfirm={modalAction === 'approve' ? handleApprove : handleReject}
           action={modalAction}
-        />
-
-        {/* Status Modal Component */}
-        <StatusModal
-          isOpen={statusModalOpen}
-          message={statusMessage}
-          onClose={() => setStatusModalOpen(false)}
         />
       </div>
     </div>
